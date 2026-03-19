@@ -103,8 +103,7 @@ export function calculateQuote(input: QuoteInput): QuoteResult | null {
   const hopeFeeUsd =
     (panelTotalUsd +
       customsDutyUsd +
-      input.shippingUsd +
-      input.customsClearanceUsd) *
+      input.shippingUsd) *
     0.1;
   const totalCostUsd =
     panelTotalUsd +

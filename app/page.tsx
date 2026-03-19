@@ -74,7 +74,7 @@ function formatJpy(n: number) {
 }
 
 function formatUsd(n: number) {
-  return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return "$" + Math.round(n).toLocaleString("en-US");
 }
 
 // Group products by model
@@ -507,9 +507,12 @@ export default function Home() {
 
             {/* Total Price */}
             <div className="bg-gray-100 border-2 border-gray-800 p-4 mb-8 text-center">
-              <p className="text-sm text-gray-600 mb-1">お見積金額（税抜）</p>
+              <p className="text-sm text-gray-600 mb-1">お見積金額（税込）</p>
               <p className="text-3xl font-bold">
-                {formatJpy(result.salePriceJpy)}
+                {formatJpy(result.salePriceJpy * 1.1)}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                税抜: {formatJpy(result.salePriceJpy)}（消費税10%）
               </p>
             </div>
 
@@ -569,6 +572,18 @@ export default function Home() {
             </table>
 
             {/* Price Breakdown */}
+            {(() => {
+              const r = input.usdRate;
+              // 輸送費・通関費は固定（原価のまま）
+              const shippingJpy = input.shippingUsd * r;
+              const customsClearanceJpy = input.customsClearanceUsd * r;
+              // 残りの金額（販売価格 - 輸送費 - 通関費）をマークアップ対象に配分
+              const markedUpTotal = result.salePriceJpy - shippingJpy - customsClearanceJpy;
+              // HOPE手数料をパネルに吸収した原価ベース
+              const panelWithHope = result.panelCostUsd + result.hopeFeeUsd;
+              const costBase = panelWithHope + result.controllerUsd + result.spareUsd + result.powerUsd + result.customsDutyUsd + input.constructionUsd;
+              const markup = markedUpTotal / (costBase * r);
+              return (
             <table className="w-full text-sm border-collapse mb-8">
               <thead>
                 <tr className="bg-gray-800 text-white">
@@ -580,61 +595,75 @@ export default function Home() {
                 <tr>
                   <td className="border px-3 py-2">パネル</td>
                   <td className="border px-3 py-2 text-right font-mono">
-                    {formatJpy(result.panelCostUsd * input.usdRate)}
+                    {formatJpy(panelWithHope * r * markup)}
                   </td>
                 </tr>
                 <tr>
                   <td className="border px-3 py-2">コントローラー</td>
                   <td className="border px-3 py-2 text-right font-mono">
-                    {formatJpy(result.controllerUsd * input.usdRate)}
+                    {formatJpy(result.controllerUsd * r * markup)}
                   </td>
                 </tr>
                 <tr>
                   <td className="border px-3 py-2">スペアモジュール</td>
                   <td className="border px-3 py-2 text-right font-mono">
-                    {formatJpy(result.spareUsd * input.usdRate)}
+                    {formatJpy(result.spareUsd * r * markup)}
                   </td>
                 </tr>
                 <tr>
                   <td className="border px-3 py-2">電源</td>
                   <td className="border px-3 py-2 text-right font-mono">
-                    {formatJpy(result.powerUsd * input.usdRate)}
+                    {formatJpy(result.powerUsd * r * markup)}
                   </td>
                 </tr>
                 <tr>
                   <td className="border px-3 py-2">関税</td>
                   <td className="border px-3 py-2 text-right font-mono">
-                    {formatJpy(result.customsDutyUsd * input.usdRate)}
+                    {formatJpy(result.customsDutyUsd * r * markup)}
                   </td>
                 </tr>
                 <tr>
                   <td className="border px-3 py-2">輸送費</td>
                   <td className="border px-3 py-2 text-right font-mono">
-                    {formatJpy(input.shippingUsd * input.usdRate)}
+                    {formatJpy(shippingJpy)}
                   </td>
                 </tr>
                 <tr>
                   <td className="border px-3 py-2">通関費</td>
                   <td className="border px-3 py-2 text-right font-mono">
-                    {formatJpy(input.customsClearanceUsd * input.usdRate)}
+                    {formatJpy(customsClearanceJpy)}
                   </td>
                 </tr>
                 {input.constructionUsd > 0 && (
                   <tr>
                     <td className="border px-3 py-2">施工費</td>
                     <td className="border px-3 py-2 text-right font-mono">
-                      {formatJpy(input.constructionUsd * input.usdRate)}
+                      {formatJpy(input.constructionUsd * r * markup)}
                     </td>
                   </tr>
                 )}
-                <tr className="bg-gray-100 font-bold">
-                  <td className="border px-3 py-2">合計（税抜）</td>
+                <tr className="bg-gray-50">
+                  <td className="border px-3 py-2">小計（税抜）</td>
                   <td className="border px-3 py-2 text-right font-mono">
                     {formatJpy(result.salePriceJpy)}
                   </td>
                 </tr>
+                <tr className="bg-gray-50">
+                  <td className="border px-3 py-2">消費税（10%）</td>
+                  <td className="border px-3 py-2 text-right font-mono">
+                    {formatJpy(result.salePriceJpy * 0.1)}
+                  </td>
+                </tr>
+                <tr className="bg-gray-100 font-bold">
+                  <td className="border px-3 py-2">合計（税込）</td>
+                  <td className="border px-3 py-2 text-right font-mono">
+                    {formatJpy(result.salePriceJpy * 1.1)}
+                  </td>
+                </tr>
               </tbody>
             </table>
+              );
+            })()}
 
             {/* Remarks */}
             <div className="mb-8">
